@@ -1,2 +1,53 @@
-API KEY: 3fb55ff3-6b43-4162-bfd8-46d0b9da4981
-bot id: 7ce17290-58d6-4ea5-b41f-bd261a93c610
+        if (preg_match('/<div class="extensiondate">(.*?)<\/div>/', $formattedrow['status'], $matches)) {
+            $extensionDateContent = $matches[1];
+            preg_match('/id=(\d+)/', $formattedrow['fullname'], $matchess);
+
+            if (isset($matchess[1])) {
+                $idd = $matchess[1];
+
+            } else {
+
+            }
+
+            preg_match('/id=(\d+)/', $formattedrow['grade'], $matchesss);
+
+            if (isset($matchesss[1])) {
+                $assignidd = $matchesss[1];
+
+                global $DB;
+                $sql = "SELECT name FROM mdl_assign WHERE id = :id";
+                $params = array('id' => $assignidd);
+
+                $res = $DB->get_records_sql($sql, $params);
+                foreach ($res as $record) {
+                    $aname = $record->name;
+                    // Now $name contains the name corresponding to the provided ID
+                    // You can use $name as needed
+                }
+
+            } else {
+
+            }
+            $extensionDateContentt = ' Assignment id:' . $assignidd . '<br>';
+            $extensionDateContentt .= ' Assignment Name:' . $aname . '<br> ';
+            $extensionDateContentt .= $extensionDateContent;
+
+            $used = 2;
+
+            $postsubject = 'Assignment due date extended';
+            $eventdata = new \core\message\message();
+            $eventdata->component = 'mod_assign';    // the component sending the message. Along with name this must exist in the table message_providers
+            $eventdata->name = 'assign_notification';        // type of message from that module (as module defines it). Along with component this must exist in the table message_providers
+            $eventdata->userfrom = $used;      // user object
+            $eventdata->userto = $idd;       // user object
+            $eventdata->subject = $postsubject;   // very short one-line subject
+            $eventdata->fullmessage = $extensionDateContentt;      // raw text
+            $eventdata->fullmessageformat = FORMAT_PLAIN;   // text format
+            $eventdata->fullmessagehtml = $extensionDateContentt;      // html rendered version
+            $eventdata->smallmessage = '';             // useful for plugins like sms or twitter
+            message_send($eventdata);
+            $fl = 1;
+
+        } else {
+
+        }
