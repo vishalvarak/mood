@@ -1,3 +1,23 @@
+ $ur = $_SERVER['REQUEST_URI'];
+        if (is_array($row)) {
+            $row = (object) $row;
+        }
+        $formattedrow = array();
+        $fl = 0;
+        foreach (array_keys($this->columns) as $column) {
+            $colmethodname = 'col_' . $column;
+            if (method_exists($this, $colmethodname)) {
+                $formattedcolumn = $this->$colmethodname($row);
+            } else {
+                $formattedcolumn = $this->other_cols($column, $row);
+                if ($formattedcolumn === NULL) {
+                    $formattedcolumn = $row->$column;
+                }
+            }
+            $formattedrow[$column] = $formattedcolumn;
+        }
+
+
         if (preg_match('/<div class="extensiondate">(.*?)<\/div>/', $formattedrow['status'], $matches)) {
             $extensionDateContent = $matches[1];
             preg_match('/id=(\d+)/', $formattedrow['fullname'], $matchess);
@@ -15,24 +35,45 @@
                 $assignidd = $matchesss[1];
 
                 global $DB;
-                $sql = "SELECT name FROM mdl_assign WHERE id = :id";
+                $sql = "SELECT a.name, a.course FROM mdl_assign a WHERE a.id = :id";
                 $params = array('id' => $assignidd);
 
                 $res = $DB->get_records_sql($sql, $params);
                 foreach ($res as $record) {
                     $aname = $record->name;
+                    $cid = $record->course;
                     // Now $name contains the name corresponding to the provided ID
                     // You can use $name as needed
+                }
+
+                $sqll = "SELECT c.fullname FROM mdl_course c WHERE c.id = :id";
+                $paramss = array('id' => $cid);
+
+                $ress = $DB->get_records_sql($sqll, $paramss);
+                foreach ($ress as $record) {
+                    $cname = $record->fullname;
+
                 }
 
             } else {
 
             }
-            $extensionDateContentt = ' Assignment id:' . $assignidd . '<br>';
-            $extensionDateContentt .= ' Assignment Name:' . $aname . '<br> ';
-            $extensionDateContentt .= $extensionDateContent;
 
-            $used = 2;
+            $sqll = "SELECT u.firstname, u.username FROM mdl_user u WHERE u.id = :id";
+                $paramss = array('id' => $idd);
+
+                $ress = $DB->get_records_sql($sqll, $paramss);
+                foreach ($ress as $record) {
+                    $fname = $record->firstname;
+                    $uname = $record->username;
+
+                }
+                $extensionDateContentt = 'Dear '.$fname.'('.$uname.'),<br><br>';
+                $extensionDateContentt .= 'You have been granted an extension for the Assessment '.$aname.' for the course '.$cname.'<br>';
+                $extensionDateContentt .= 'The ';
+                $extensionDateContentt .= $extensionDateContent.'<br><br><br><br><br><br> Regards<br> Vishal ';
+
+                $used = 2;
 
             $postsubject = 'Assignment due date extended';
             $eventdata = new \core\message\message();
@@ -45,9 +86,14 @@
             $eventdata->fullmessageformat = FORMAT_PLAIN;   // text format
             $eventdata->fullmessagehtml = $extensionDateContentt;      // html rendered version
             $eventdata->smallmessage = '';             // useful for plugins like sms or twitter
-            message_send($eventdata);
-            $fl = 1;
+
+                message_send($eventdata);
+
+
+
 
         } else {
 
         }
+
+        return $formattedrow;
