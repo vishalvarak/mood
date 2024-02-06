@@ -1,4 +1,6 @@
- $ur = $_SERVER['REQUEST_URI'];
+  function format_row($row)
+    {
+        $ur = $_SERVER['REQUEST_URI'];
         if (is_array($row)) {
             $row = (object) $row;
         }
@@ -60,22 +62,41 @@
             }
 
             $sqll = "SELECT u.firstname, u.username FROM mdl_user u WHERE u.id = :id";
-                $paramss = array('id' => $idd);
+            $paramss = array('id' => $idd);
 
-                $ress = $DB->get_records_sql($sqll, $paramss);
-                foreach ($ress as $record) {
-                    $fname = $record->firstname;
-                    $uname = $record->username;
+            $ress = $DB->get_records_sql($sqll, $paramss);
+            foreach ($ress as $record) {
+                $fname = $record->firstname;
+                $uname = $record->username;
 
-                }
-                $extensionDateContentt = 'Dear '.$fname.'('.$uname.'),<br><br>';
-                $extensionDateContentt .= 'You have been granted an extension for the Assessment '.$aname.' for the course '.$cname.'<br>';
-                $extensionDateContentt .= 'The ';
-                $extensionDateContentt .= $extensionDateContent.'<br><br><br><br><br><br> Regards<br> Vishal ';
+            }
 
-                $used = 2;
 
-            $postsubject = 'Assignment due date extended';
+            $sqll = "SELECT u.firstname, u.lastname
+            FROM mdl_course c
+            JOIN mdl_context ctx ON c.id = ctx.instanceid
+            JOIN mdl_role_assignments ra ON ctx.id = ra.contextid
+            JOIN mdl_user u ON ra.userid = u.id
+            JOIN mdl_role r ON ra.roleid = r.id
+            WHERE c.id = :id
+            AND r.shortname = 'editingteacher'";
+            $paramss = array('id' => $cid);
+
+            $ress = $DB->get_records_sql($sqll, $paramss);
+            foreach ($ress as $record) {
+                $tfname = $record->firstname;
+                $tlname = $record->lastname;
+
+            }
+
+            $extensionDateContentt = 'Dear ' . $fname . '(' . $uname . '),<br><br>';
+            $extensionDateContentt .= 'You have been granted an extension for the Assessment ' . $aname . ' for the course ' . $cname . '<br>';
+            $extensionDateContentt .= 'The ';
+            $extensionDateContentt .= $extensionDateContent . '<br><br><br><br> Regards<br> '.$tfname.' '.$tlname;
+
+            $used = 2;
+
+            $postsubject = 'Assessment due date extended for '.$aname.', '.$cname;
             $eventdata = new \core\message\message();
             $eventdata->component = 'mod_assign';    // the component sending the message. Along with name this must exist in the table message_providers
             $eventdata->name = 'assign_notification';        // type of message from that module (as module defines it). Along with component this must exist in the table message_providers
@@ -87,7 +108,7 @@
             $eventdata->fullmessagehtml = $extensionDateContentt;      // html rendered version
             $eventdata->smallmessage = '';             // useful for plugins like sms or twitter
 
-                message_send($eventdata);
+            message_send($eventdata);
 
 
 
@@ -97,3 +118,4 @@
         }
 
         return $formattedrow;
+    }
