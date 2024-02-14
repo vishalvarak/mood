@@ -240,3 +240,19 @@ function format_row($row)
 
         return $formattedrow;
     }
+
+
+CREATE TABLE new_table_name (
+    id BIGINT(10) NOT NULL AUTO_INCREMENT,
+    userid BIGINT(10) NOT NULL DEFAULT 0,
+    assignment BIGINT(10) NOT NULL DEFAULT 0,
+    locked BIGINT(10) NOT NULL DEFAULT 0,
+    mailed SMALLINT(4) NOT NULL DEFAULT 0,
+    extensionduedate BIGINT(10) NOT NULL DEFAULT 0,
+    workflowstate VARCHAR(20) DEFAULT NULL,
+    allocatedmarker BIGINT(10) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    INDEX userid_index (userid),
+    INDEX assignment_index (assignment),
+    INDEX mailed_index (mailed)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
