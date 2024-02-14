@@ -256,3 +256,83 @@ CREATE TABLE new_table_name (
     INDEX assignment_index (assignment),
     INDEX mailed_index (mailed)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+
+
+ global $DB;
+
+
+        $sql = "SELECT a.name, a.course FROM mdl_assign a WHERE a.id = :id";
+        $params = array('id' => $newsubmission->assignment);
+
+        $res = $DB->get_records_sql($sql, $params);
+
+        if (count($res) == 0) {
+            $sql = "SELECT a.name, a.course FROM mdl_assign a WHERE a.id = :id";
+            $params = array('id' => $newsubmission->assignment - 1);
+
+            $res = $DB->get_records_sql($sql, $params);
+        }
+        foreach ($res as $record) {
+            $aname = $record->name;
+            $cid = $record->course;
+            // Now $name contains the name corresponding to the provided ID
+            // You can use $name as needed
+        }
+
+        $sqll = "SELECT c.fullname FROM mdl_course c WHERE c.id = :id";
+        $paramss = array('id' => $cid);
+
+        $ress = $DB->get_records_sql($sqll, $paramss);
+        foreach ($ress as $record) {
+            $cname = $record->fullname;
+
+        }
+
+
+
+        $sqll = "SELECT u.firstname, u.username FROM mdl_user u WHERE u.id = :id";
+            $paramss = array('id' => $userid);
+
+            $ress = $DB->get_records_sql($sqll, $paramss);
+            foreach ($ress as $record) {
+                $fname = $record->firstname;
+                $uname = $record->username;
+
+            }
+            $sqll = "SELECT u.firstname, u.lastname
+            FROM mdl_course c
+            JOIN mdl_context ctx ON c.id = ctx.instanceid
+            JOIN mdl_role_assignments ra ON ctx.id = ra.contextid
+            JOIN mdl_user u ON ra.userid = u.id
+            JOIN mdl_role r ON ra.roleid = r.id
+            WHERE c.id = :id
+            AND r.shortname = 'editingteacher'";
+            $paramss = array('id' => $cid);
+
+            $ress = $DB->get_records_sql($sqll, $paramss);
+            foreach ($ress as $record) {
+                $tfname = $record->firstname;
+                $tlname = $record->lastname;
+
+            }
+
+        $extensionDateContentt = 'Dear ' . $fname . '(' . $uname . '),<br><br>';
+            $extensionDateContentt .= 'You have been granted ' . $newsubmission->attemptnumber + 1 . ' attempt for the assessment '.$aname.' for the course ' . $cname . '<br>';
+            $extensionDateContentt .= '<br><br><br><br> Regards<br> ' . $tfname . ' ' . $tlname;
+
+            $used = 2;
+
+            $postsubject = 'New attempt granted for ' . $aname . ', ' . $cname;
+            $eventdata = new \core\message\message();
+            $eventdata->component = 'mod_assign';    // the component sending the message. Along with name this must exist in the table message_providers
+            $eventdata->name = 'assign_notification';        // type of message from that module (as module defines it). Along with component this must exist in the table message_providers
+            $eventdata->userfrom = $used;      // user object
+            $eventdata->userto = $userid;       // user object
+            $eventdata->subject = $postsubject;   // very short one-line subject
+            $eventdata->fullmessage = $extensionDateContentt;      // raw text
+            $eventdata->fullmessageformat = FORMAT_PLAIN;   // text format
+            $eventdata->fullmessagehtml = $extensionDateContentt;      // html rendered version
+            $eventdata->smallmessage = '';
+            message_send($eventdata);
