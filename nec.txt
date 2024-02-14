@@ -1,4 +1,63 @@
-  function format_row($row)
+  public function update_user_flags($flags)
+    {
+        global $DB;
+        if ($flags->userid <= 0 || $flags->assignment <= 0 || $flags->id <= 0) {
+            return false;
+        }
+
+        $sq = "SELECT e.extensionduedate, e.id FROM {assign_user_flags} e WHERE e.userid = :userid AND e.assignment = :assignment";
+        // Parameters
+        $param = array('userid' => $flags->userid, 'assignment' => $flags->assignment);
+
+        $rec = $DB->get_records_sql($sq, $param);
+        foreach ($rec as $record) {
+            $edate = $record->extensionduedate;
+            $eid = $record->id;
+        }
+
+        $ins = new stdClass();
+        $er = 1;
+        $ins->userid = $flags->userid;
+        $ins->assignment = $flags->assignment;
+        $ins->mailed = $eid;
+        $ins->extensionduedate = $edate;
+        $ins->locked = 1;
+
+        // Define the table name
+        $table = 'assign_due_date_extension';
+
+        // Define the conditions
+        $conditions = array(
+            'userid' => $flags->userid,        // Example userid
+            'assignment' => $flags->assignment // Example assignment
+        );
+
+        // Check if the record exists
+        if ($DB->record_exists($table, $conditions)) {
+            $sq = "SELECT e.id FROM {assign_due_date_extension} e WHERE e.userid = :userid AND e.assignment = :assignment";
+            // Parameters
+            $param = array('userid' => $flags->userid, 'assignment' => $flags->assignment);
+
+            $rec = $DB->get_records_sql($sq, $param);
+            foreach ($rec as $record) {
+                $eidd = $record->id;
+            }
+            $ins->id = $eidd;
+
+            $DB->update_record('assign_due_date_extension', $ins);
+        } else {
+            $DB->insert_record('assign_due_date_extension', $ins);
+        }
+
+
+        $result = $DB->update_record('assign_user_flags', $flags);
+        return $result;
+    }
+
+
+
+
+function format_row($row)
     {
         $ur = $_SERVER['REQUEST_URI'];
         if (is_array($row)) {
@@ -41,6 +100,13 @@
                 $params = array('id' => $assignidd);
 
                 $res = $DB->get_records_sql($sql, $params);
+
+                if (count($res) == 0) {
+                    $sql = "SELECT a.name, a.course FROM mdl_assign a WHERE a.id = :id";
+                    $params = array('id' => $assignidd - 1);
+
+                    $res = $DB->get_records_sql($sql, $params);
+                }
                 foreach ($res as $record) {
                     $aname = $record->name;
                     $cid = $record->course;
@@ -92,11 +158,11 @@
             $extensionDateContentt = 'Dear ' . $fname . '(' . $uname . '),<br><br>';
             $extensionDateContentt .= 'You have been granted an extension for the Assessment ' . $aname . ' for the course ' . $cname . '<br>';
             $extensionDateContentt .= 'The ';
-            $extensionDateContentt .= $extensionDateContent . '<br><br><br><br> Regards<br> '.$tfname.' '.$tlname;
+            $extensionDateContentt .= $extensionDateContent . '<br><br><br><br> Regards<br> ' . $tfname . ' ' . $tlname;
 
             $used = 2;
 
-            $postsubject = 'Assessment due date extended for '.$aname.', '.$cname;
+            $postsubject = 'Assessment due date extended for ' . $aname . ', ' . $cname;
             $eventdata = new \core\message\message();
             $eventdata->component = 'mod_assign';    // the component sending the message. Along with name this must exist in the table message_providers
             $eventdata->name = 'assign_notification';        // type of message from that module (as module defines it). Along with component this must exist in the table message_providers
@@ -108,7 +174,62 @@
             $eventdata->fullmessagehtml = $extensionDateContentt;      // html rendered version
             $eventdata->smallmessage = '';             // useful for plugins like sms or twitter
 
-            message_send($eventdata);
+            $current_time = time();
+            if ($row->extensionduedate > $current_time) {
+                $sq = "SELECT COUNT(e.id) AS count FROM {assign_user_flags} e WHERE e.userid = :userid AND e.assignment = :assignment";
+                // Parameters
+                $param = array('userid' => $idd, 'assignment' => $assignidd - 1);
+
+                $re = $DB->get_records_sql($sq, $param);
+                $c = $re[1]->count;
+
+                if ($c == 1) {
+                    $sqq = "SELECT e.id FROM {assign_due_date_extension} e WHERE e.userid = :userid AND e.assignment = :assignment";
+                    // Parameters
+                    $paramm = array('userid' => $idd, 'assignment' => $assignidd - 1);
+
+                    $recc = $DB->get_records_sql($sqq, $paramm);
+                    foreach ($recc as $record) {
+                        $eeid = $record->id;
+                    }
+
+
+                    $sq = "SELECT e.id, e.extensionduedate, e.locked, e.mailed FROM {assign_due_date_extension} e WHERE e.userid = :userid AND e.assignment = :assignment AND e.id = :eid";
+                    // Parameters
+                    $param = array('userid' => $idd, 'assignment' => $assignidd - 1, 'eid' => $eeid);
+
+                    $rec = $DB->get_records_sql($sq, $param);
+                    foreach ($rec as $record) {
+                        $edate = $record->extensionduedate;
+                        $etog = $record->locked;
+                        $mailed = $record->mailed;
+                        $eiid = $record->id;
+                    }
+
+                    if ($row->extensionduedate != $edate) {
+                        if ($etog == 1) {
+                            message_send($eventdata);
+                            $ins = new stdClass();
+                            $er = '0';
+                            $ins->userid = $idd;
+                            $ins->assignment = $assignidd - 1;
+                            $ins->mailed = $mailed;
+                            $ins->extensionduedate = $edate;
+                            $ins->id = $eiid;
+                            $ins->locked = $er;
+                            $DB->update_record('assign_due_date_extension', $ins);
+                        }
+                    }
+                } else {
+                    // message_send($eventdata);
+                }
+
+            } elseif ($row->extensionduedate < $current_time) {
+                //echo "The time is in the past.";
+            } else {
+                // message_send($eventdata);
+            }
+
 
 
 
